@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrossFit Rehab Guide</title>
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+  <style>
+    :root {
+      --navy:       #1B2D5E;
+      --navy-light: #2B4490;
+      --accent:     #4A7FC1;
+      --bg:         #F5F6FA;
+      --card:       #FFFFFF;
+      --text:       #1A1A2E;
+      --text-sub:   #6B7280;
+      --border:     #D1D5DB;
+      --danger:     #DC2626;
+      --danger-bg:  #FEF2F2;
+      --success:    #16A34A;
+      --choice-sel: #EEF2FF;
+      --t1: 22px; --w1: 700;
+      --t2: 17px; --w2: 600;
+      --t3: 15px; --w3: 400;
+      --t4: 13px; --w4: 400;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Pretendard', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+    }
+    .app { width: 100%; max-width: 480px; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Progress */
+    .progress-wrap {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--card); padding: 14px 20px 10px;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .progress-label span { font-size: var(--t4); font-weight: var(--w4); color: var(--text-sub); }
+    .progress-label span:last-child { font-weight: 600; color: var(--navy-light); }
+    .progress-track { height: 6px; background: #E5E7EB; border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--navy-light); border-radius: 99px; transition: width 0.3s ease; }
+
+    /* Screen */
+    .screen { flex: 1; padding: 24px 20px 32px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Typography helpers */
+    .t1 { font-size: var(--t1); font-weight: var(--w1); line-height: 1.4; }
+    .t2 { font-size: var(--t2); font-weight: var(--w2); line-height: 1.5; }
+    .t3 { font-size: var(--t3); font-weight: var(--w3); line-height: 1.6; color: var(--text-sub); }
+    .t4 { font-size: var(--t4); font-weight: var(--w4); color: var(--text-sub); }
+
+    /* Card */
+    .card { background: var(--card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 20px; }
+
+    /* Choices */
+    .choices { display: flex; flex-direction: column; gap: 10px; }
+    .choice-btn {
+      width: 100%; min-height: 56px; padding: 14px 16px;
+      border-radius: 10px; border: 1.5px solid var(--border);
+      background: var(--card); font-family: inherit;
+      font-size: var(--t2); font-weight: var(--w2); color: var(--text);
+      text-align: left; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .choice-btn:hover { border-color: var(--accent); background: var(--choice-sel); }
+    .choice-btn .sub { font-size: var(--t4); color: var(--text-sub); display: block; margin-top: 2px; }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%; height: 54px; border-radius: 10px; border: none;
+      background: var(--navy); color: white; font-family: inherit;
+      font-size: var(--t2); font-weight: var(--w2); cursor: pointer;
+      transition: background 0.15s; margin-top: auto;
+    }
+    .btn-primary:hover { background: var(--navy-light); }
+    .btn-back {
+      background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: var(--t4); color: var(--text-sub);
+      display: flex; align-items: center; gap: 6px; padding: 0; margin-bottom: 4px;
+    }
+    .btn-back:hover { color: var(--navy); }
+    .btn-danger {
+      width: 100%; height: 54px; border-radius: 10px;
+      border: 2px solid var(--danger); background: var(--danger);
+      color: white; font-family: inherit; font-size: var(--t2); font-weight: var(--w2); cursor: pointer;
+    }
+
+    /* Stage Indicator */
+    .stage-wrap { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+    .stage-item {
+      flex-shrink: 0; padding: 5px 12px; border-radius: 99px;
+      font-size: var(--t4); font-weight: 600;
+      border: 1.5px solid var(--border); color: var(--text-sub); background: var(--card);
+    }
+    .stage-item.active { background: var(--navy); color: white; border-color: var(--navy); }
+    .stage-item.done  { background: #DCFCE7; color: var(--success); border-color: var(--success); }
+
+    /* Exercise Card */
+    .exercise-card {
+      background: var(--card); border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .exercise-card h3 { font-size: var(--t2); font-weight: var(--w2); }
+    .why-label { font-size: var(--t4); font-weight: 600; color: var(--accent); letter-spacing: 0.04em; }
+    .why-text  { font-size: var(--t3); line-height: 1.6; color: var(--text-sub); }
+    .cue-text  { font-size: var(--t4); color: var(--navy); background: var(--choice-sel); border-radius: 6px; padding: 6px 10px; }
+    .sets-text { font-size: var(--t4); font-weight: 600; color: var(--navy); }
+
+    /* Cause Tag */
+    .cause-tag {
+      display: inline-block; background: var(--choice-sel); color: var(--navy-light);
+      border-radius: 6px; padding: 4px 10px;
+      font-size: var(--t4); font-weight: 600;
+    }
+
+    /* Danger */
+    .danger-alert {
+      background: var(--danger-bg); border: 2px solid var(--danger);
+      border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .danger-alert h2 { font-size: var(--t2); font-weight: var(--w2); color: var(--danger); }
+    .danger-alert p  { font-size: var(--t3); line-height: 1.6; }
+
+    /* Home */
+    .home-hero { background: var(--navy); border-radius: 16px; padding: 28px 24px; color: white; }
+    .home-hero .badge {
+      display: inline-block; background: rgba(255,255,255,0.15);
+      border-radius: 99px; padding: 4px 12px;
+      font-size: var(--t4); font-weight: 600; margin-bottom: 14px;
+    }
+    .home-hero h1 { font-size: var(--t1); font-weight: var(--w1); line-height: 1.4; margin-bottom: 10px; }
+    .home-hero p  { font-size: var(--t3); line-height: 1.6; color: rgba(255,255,255,0.75); }
+    .info-row { display: flex; align-items: center; gap: 12px; font-size: var(--t3); }
+    .info-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--navy-light); flex-shrink: 0; }
+
+    /* Complete */
+    .complete-icon {
+      width: 64px; height: 64px; background: #DCFCE7; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 8px;
+    }
+    .complete-wrap { text-align: center; padding: 12px 0; }
+
+    /* Pain Intensity */
+    .intensity-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    }
+    .intensity-btn {
+      aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--border);
+      background: var(--card); font-family: inherit;
+      font-size: var(--t2); font-weight: var(--w2); cursor: pointer;
+      transition: all 0.15s; color: var(--text);
+    }
+    .intensity-btn.low          { border-color: #16A34A; color: #16A34A; }
+    .intensity-btn.mid          { border-color: #D97706; color: #D97706; }
+    .intensity-btn.high         { border-color: #DC2626; color: #DC2626; }
+    .intensity-btn.low.selected  { background: #16A34A; color: white; }
+    .intensity-btn.mid.selected  { background: #D97706; color: white; }
+    .intensity-btn.high.selected { background: #DC2626; color: white; }
+    .intensity-desc {
+      text-align: center; padding: 12px;
+      font-size: var(--t3); font-weight: 600; border-radius: 10px;
+      transition: all 0.2s;
+    }
+
+    /* Scroll top on nav */
+    html { scroll-behavior: smooth; }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <div id="progress-bar" style="display:none" class="progress-wrap">
+    <div class="progress-label">
+      <span id="pb-label"></span>
+      <span id="pb-pct"></span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pb-fill"></div></div>
+  </div>
+  <div class="screen" id="main-screen"></div>
+</div>
+
+<script>
+/* ── 상태 ── */
+const S = {
+  screen: 'home',
+  painSiteId: null,     // 통증 부위 (먼저)
+  painIntensity: null,  // 1~10
+  movementId: null,     // 동작 (나중)
+  questionId: null,
+  causeId: null,
+  stageIndex: 0,
+  questionDepth: 0,
+};
+
+/* ── 데이터 로드 (fetch → inline fallback) ── */
+let DATA = null;
+
+async function init() {
+  try {
+    const r = await fetch('data/rehab.json');
+    DATA = await r.json();
+  } catch(e) {
+    alert('data/rehab.json 을 찾을 수 없습니다.\n로컬 서버로 열어주세요:\nnpx serve . 또는 VS Code Live Server');
+    return;
+  }
+  render();
+}
+
+/* ── 헬퍼 ── */
+const el = id => document.getElementById(id);
+const find = (arr, id) => arr && arr.find(x => x.id === id);
+
+function getMovement()  { return find(DATA.movements, S.movementId); }
+function getPainSite()  { return find(getMovement().pain_sites, S.painSiteId); }
+function getQuestion()  { return find(getPainSite().questions, S.questionId); }
+function getCause()     { return find(getPainSite().causes, S.causeId); }
+
+// 전체 동작에서 해당 부위가 있는 것만 수집 (질문 있는 것만)
+function getAllPainSites() {
+  const map = {};
+  DATA.movements.forEach(m => m.pain_sites.forEach(ps => {
+    if (!map[ps.id] && ps.questions && ps.questions.length > 0)
+      map[ps.id] = { id: ps.id, name: ps.name };
+  }));
+  return Object.values(map);
+}
+
+// 선택한 부위를 가진 동작만
+function getMovementsForSite() {
+  return DATA.movements.filter(m => {
+    const ps = m.pain_sites.find(p => p.id === S.painSiteId);
+    return ps && ps.questions && ps.questions.length > 0;
+  });
+}
+
+const INTENSITY_DESC = {
+  1:'거의 없음', 2:'거의 없음', 3:'약함',
+  4:'약함', 5:'보통', 6:'보통',
+  7:'심함', 8:'심함', 9:'매우 심함', 10:'매우 심함'
+};
+
+/* ── 진행률 ── */
+const PROGRESS = {
+  home: 0, pain_site: 12, pain_intensity: 25, movement: 38,
+  question: 55, cause: 78, route: 90, complete: 100, danger: 50
+};
+const LABEL = {
+  pain_site: '통증 부위', pain_intensity: '통증 강도', movement: '동작 선택',
+  question: '감별 질문', cause: '원인 확정', route: '재활 루트', complete: '완료', danger: '주의'
+};
+
+function updateProgress(screen) {
+  const bar = el('progress-bar');
+  if (screen === 'home') { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  let pct = PROGRESS[screen] || 50;
+  if (screen === 'question') pct = 35 + Math.round((S.questionDepth / S.maxDepth) * 30);
+  el('pb-label').textContent = LABEL[screen] || '';
+  el('pb-pct').textContent = pct + '%';
+  el('pb-fill').style.width = pct + '%';
+}
+
+/* ── 렌더 ── */
+function render() {
+  updateProgress(S.screen);
+  window.scrollTo(0, 0);
+  const screens = { home, pain_site, pain_intensity, movement, question, cause, route, danger, complete };
+  el('main-screen').innerHTML = (screens[S.screen] || home)();
+}
+
+/* ── 화면별 HTML 생성 ── */
+
+function home() {
+  return `
+    <div class="home-hero">
+      <div class="badge">물리치료사 설계</div>
+      <h1>통증 원인부터<br>먼저 찾습니다</h1>
+      <p>같은 무릎 통증도 원인이 다르면<br>재활도 달라야 합니다.</p>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <div class="info-row"><div class="dot"></div>5분 안에 원인 감별 완료</div>
+      <div class="info-row"><div class="dot"></div>박스에서 스마트폰으로</div>
+      <div class="info-row"><div class="dot"></div>스쿼트 3종 · 원인별 재활 루트</div>
+    </div>
+    <button class="btn-primary" onclick="go('pain_site')">시작하기</button>`;
+}
+
+const PAIN_ICONS = { knee: '🦵', 'lower-back': '🦴', ankle: '🦶', shoulder: '💪', 'shoulder-wrist': '💪' };
+
+function pain_site() {
+  const sites = getAllPainSites();
+  const btns = sites.map(p => `
+    <button class="choice-btn" onclick="selectPainSite('${p.id}')">
+      <span style="font-size:20px">${PAIN_ICONS[p.id] || '●'}</span>
+      <span>${p.name}</span>
+    </button>`).join('');
+  return `
+    <div>
+      <button class="btn-back" onclick="go('home')">← 처음으로</button>
+      <h1 class="t1">어디가 아픈가요?</h1>
+      <p class="t3" style="margin-top:8px">가장 통증이 심한 부위 하나를 선택하세요.</p>
+    </div>
+    <div class="choices">${btns}</div>`;
+}
+
+function pain_intensity() {
+  const sel = S.painIntensity;
+  const desc = sel ? INTENSITY_DESC[sel] : null;
+  const isHigh = sel >= 9;
+
+  const nums = Array.from({length:10}, (_,i) => {
+    const n = i + 1;
+    const cls = n <= 3 ? 'low' : n <= 6 ? 'mid' : 'high';
+    const active = sel === n ? 'selected' : '';
+    return `<button class="intensity-btn ${cls} ${active}" onclick="selectIntensity(${n})">${n}</button>`;
+  }).join('');
+
+  const descColor = !sel ? '' : sel <= 3 ? '#16A34A' : sel <= 6 ? '#D97706' : '#DC2626';
+  const descBg    = !sel ? '' : sel <= 3 ? '#F0FDF4' : sel <= 6 ? '#FFFBEB' : '#FEF2F2';
+
+  return `
+    <div>
+      <button class="btn-back" onclick="go('pain_site')">← 통증 부위</button>
+      <h1 class="t1">지금 통증이<br>얼마나 심한가요?</h1>
+      <p class="t3" style="margin-top:8px">운동 중 가장 심할 때 기준으로 선택하세요.</p>
+    </div>
+    <div class="card" style="gap:16px;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;font-size:var(--t4);color:var(--text-sub)">
+        <span>1 · 통증 없음</span><span>10 · 극심한 통증</span>
+      </div>
+      <div class="intensity-grid">${nums}</div>
+      ${sel ? `
+        <div class="intensity-desc" style="color:${descColor};background:${descBg}">
+          ${sel}점 · ${desc}
+          ${isHigh ? '<br><span style="font-size:var(--t4)">병원 진료를 먼저 고려해보세요</span>' : ''}
+        </div>` : '<div style="height:44px"></div>'}
+    </div>
+    <button class="btn-primary" ${sel ? '' : 'disabled'} onclick="go('movement')">다음</button>`;
+}
+
+const MOVEMENT_ICONS = { 'back-squat': '🏋️', 'front-squat': '🏋️', 'overhead-squat': '🙌' };
+const MOVEMENT_DESC  = { 'back-squat': 'Back Squat', 'front-squat': 'Front Squat', 'overhead-squat': 'Overhead Squat' };
+
+function movement() {
+  const mvs = getMovementsForSite();
+  const btns = mvs.map(m => `
+    <button class="choice-btn" onclick="selectMovement('${m.id}')">
+      <span style="font-size:20px">${MOVEMENT_ICONS[m.id] || '🏋️'}</span>
+      <span>${m.name}<span class="sub">${MOVEMENT_DESC[m.id] || ''}</span></span>
+    </button>`).join('');
+  return `
+    <div>
+      <button class="btn-back" onclick="go('pain_intensity')">← 통증 강도</button>
+      <h1 class="t1">어떤 동작에서<br>통증이 나타나나요?</h1>
+    </div>
+    <div class="choices">${btns}</div>`;
+}
+
+function question() {
+  const q = getQuestion();
+  const btns = q.choices.map(c => `
+    <button class="choice-btn" onclick="selectChoice('${c.next}')">
+      ${c.text}
+    </button>`).join('');
+  return `
+    <div>
+      <button class="btn-back" onclick="go('movement')">← 동작 선택</button>
+      <h1 class="t1">${q.text}</h1>
+      ${q.sub ? `<p class="t3" style="margin-top:8px">${q.sub}</p>` : ''}
+    </div>
+    <div class="choices">${btns}</div>`;
+}
+
+function cause() {
+  const c = getCause();
+  return `
+    <div>
+      <button class="btn-back" onclick="go('question')">← 이전 질문</button>
+      <h1 class="t1">원인을 찾았습니다</h1>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <span class="cause-tag">${c.label} · ${c.tag}</span>
+      <h2 class="t2">${c.name}</h2>
+      <p class="t3">${c.description}</p>
+      ${c.priority_note ? `<p style="font-size:var(--t4);color:var(--accent);font-weight:600">${c.priority_note}</p>` : ''}
+    </div>
+    <button class="btn-primary" onclick="go('route')">재활 루트 보기</button>`;
+}
+
+function route() {
+  const c  = getCause();
+  const mv = getMovement();
+  const ps = getPainSite();
+  const stages = c.route.stages;
+  const stage  = stages[S.stageIndex];
+  const isLast = S.stageIndex === stages.length - 1;
+
+  const stageIndicator = stages.map((st, i) => {
+    const cls = i < S.stageIndex ? 'done' : i === S.stageIndex ? 'active' : '';
+    return `<div class="stage-item ${cls}">${i + 1} ${st.name}</div>`;
+  }).join('');
+
+  const exercises = stage.exercises.map(ex => `
+    <div class="exercise-card">
+      <h3>${ex.name}</h3>
+      <span class="why-label">왜 이 운동인가</span>
+      <p class="why-text">${ex.why}</p>
+      <span class="sets-text">${ex.sets}</span>
+      ${ex.cue ? `<div class="cue-text">● ${ex.cue}</div>` : ''}
+    </div>`).join('');
+
+  return `
+    <div>
+      <button class="btn-back" onclick="go('cause')">← 원인 확인</button>
+      <h1 class="t1">${c.label} · ${mv.name} ${ps.name}</h1>
+      <p class="t3" style="margin-top:6px">${c.name}</p>
+    </div>
+    <div>
+      <p class="t4" style="margin-bottom:8px;font-weight:600">현재 단계</p>
+      <div class="stage-wrap">${stageIndicator}</div>
+    </div>
+    <div style="font-size:var(--t2);font-weight:var(--w2);padding:4px 0">${stage.name} 단계</div>
+    ${exercises}
+    <button class="btn-primary" onclick="${isLast ? "go('complete')" : 'nextStage()'}">
+      ${isLast ? '루트 완료' : '이 단계 완료'}
+    </button>`;
+}
+
+function danger() {
+  const d = getPainSite().danger;
+  return `
+    <div style="background:var(--danger-bg);margin:-24px -20px 0;padding:24px 20px;flex:none">
+      <h1 class="t1" style="color:var(--danger)">${d.title}</h1>
+    </div>
+    <div class="danger-alert">
+      <h2>병원 진료가 필요합니다</h2>
+      <p>${d.reason}</p>
+      <p style="font-size:var(--t4);color:var(--text-sub)">${d.action}</p>
+    </div>
+    <button class="btn-danger" onclick="reset()">처음으로 돌아가기</button>`;
+}
+
+function complete() {
+  const c = getCause();
+  const stages = c.route.stages;
+  const isAllDone = S.stageIndex >= stages.length - 1;
+
+  const stageIndicator = stages.map((st, i) => {
+    const cls = i <= S.stageIndex ? 'done' : i === S.stageIndex + 1 ? 'active' : '';
+    return `<div class="stage-item ${cls}">${i + 1} ${st.name}</div>`;
+  }).join('');
+
+  const nextStage = stages[S.stageIndex + 1];
+  return `
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">
+      <div class="complete-wrap">
+        <div class="complete-icon">✓</div>
+        <h1 class="t1">${S.stageIndex + 1}단계 완료!</h1>
+        <p class="t3" style="margin-top:8px">
+          ${isAllDone
+            ? '모든 단계를 마쳤습니다. 꾸준히 유지하세요.'
+            : `${stages[S.stageIndex].name} 단계를 마쳤습니다.`}
+        </p>
+      </div>
+      <div class="stage-wrap" style="justify-content:center">${stageIndicator}</div>
+      ${nextStage ? `
+        <div class="card" style="text-align:center;display:flex;flex-direction:column;gap:4px">
+          <p class="t4">다음 단계</p>
+          <p class="t2">${S.stageIndex + 2}단계 · ${nextStage.name}</p>
+        </div>` : ''}
+    </div>
+    ${nextStage
+      ? `<button class="btn-primary" onclick="goNextStageFromComplete()">다음 단계 시작</button>`
+      : ''}
+    <button class="btn-primary" style="background:var(--text-sub);margin-top:8px" onclick="reset()">처음으로 돌아가기</button>`;
+}
+
+/* ── 액션 ── */
+function go(screen) {
+  S.screen = screen;
+  render();
+}
+
+function selectPainSite(id) {
+  S.painSiteId   = id;
+  S.movementId   = null;
+  S.questionId   = null;
+  S.causeId      = null;
+  S.stageIndex   = 0;
+  S.questionDepth = 0;
+  go('pain_intensity');
+}
+
+function selectIntensity(n) {
+  S.painIntensity = n;
+  render();  // 강도만 다시 그림 (화면 전환 X)
+}
+
+function selectMovement(id) {
+  S.movementId   = id;
+  S.questionId   = getPainSite().entry_question;
+  S.questionDepth = 0;
+  go('question');
+}
+
+function selectChoice(next) {
+  S.questionDepth++;
+  if (next === 'danger') {
+    go('danger');
+  } else if (next.startsWith('q:')) {
+    S.questionId = next.slice(2);
+    go('question');
+  } else if (next.startsWith('cause:')) {
+    S.causeId = next.slice(6);
+    go('cause');
+  }
+}
+
+function nextStage() {
+  go('complete');
+}
+
+function goNextStageFromComplete() {
+  S.stageIndex++;
+  go('route');
+}
+
+function reset() {
+  Object.assign(S, {
+    screen: 'home', painSiteId: null, painIntensity: null,
+    movementId: null, questionId: null, causeId: null,
+    stageIndex: 0, questionDepth: 0
+  });
+  render();
+}
+
+/* ── 시작 ── */
+init();
+</script>
+</body>
+</html>
