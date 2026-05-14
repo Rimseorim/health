@@ -221,6 +221,52 @@ const S = {
   isRedFlagDanger: false,
 };
 
+/* ── 사용자 ── */
+let USER = JSON.parse(localStorage.getItem('rehab_user') || 'null');
+
+function saveUser(u) { USER = u; localStorage.setItem('rehab_user', JSON.stringify(u)); }
+function clearUser() { USER = null; localStorage.removeItem('rehab_user'); }
+
+const API = 'http://localhost:8000';
+
+async function apiPost(path, body) {
+  const res = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || '오류가 발생했습니다.');
+  return data;
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('inp-email').value;
+  const password = document.getElementById('inp-password').value;
+  const errEl = document.getElementById('auth-error');
+  try {
+    const data = await apiPost('/auth/login', { email, password });
+    saveUser(data);
+    go('home');
+  } catch(err) { errEl.textContent = err.message; }
+}
+
+async function doSignup(e) {
+  e.preventDefault();
+  const email = document.getElementById('inp-email').value;
+  const password = document.getElementById('inp-password').value;
+  const nickname = document.getElementById('inp-nickname').value;
+  const errEl = document.getElementById('auth-error');
+  try {
+    const data = await apiPost('/auth/signup', { email, password, nickname });
+    saveUser(data);
+    go('home');
+  } catch(err) { errEl.textContent = err.message; }
+}
+
+function logout() { clearUser(); render(); }
+
 /* ── 데이터 ── */
 let DATA = null;
 let MANIFEST = null;
@@ -301,7 +347,7 @@ function updateProgress(screen) {
 function render() {
   updateProgress(S.screen);
   window.scrollTo(0, 0);
-  const screens = { home, pain_site, red_flag, pain_intensity, movement, question, test, cause, route, danger, complete };
+  const screens = { home, login, signup, pain_site, red_flag, pain_intensity, movement, question, test, cause, route, danger, complete };
   el('main-screen').innerHTML = (screens[S.screen] || home)();
 }
 
@@ -323,7 +369,46 @@ function home() {
     </div>
     ${hasProgress ? `<button class="btn-primary" onclick="resumeProgress()">이어서 하기</button>` : ''}
     <button class="btn-primary" style="${hasProgress ? 'background:var(--text-sub);' : ''}" onclick="go('pain_site')">처음부터 시작</button>
+    ${USER
+      ? `<p style="text-align:center;font-size:var(--t4);color:var(--text-sub)">${USER.nickname}님 · <a href="#" onclick="logout();return false;" style="color:var(--text-sub)">로그아웃</a></p>`
+      : `<button class="btn-primary" style="background:var(--navy-light)" onclick="go('login')">로그인 / 회원가입</button>`
+    }
     <p style="text-align:center;font-size:var(--t4);color:var(--text-sub);line-height:1.6;padding:0 8px">이 앱은 재활 보조 도구이며<br>전문가 진단을 대체하지 않습니다</p>`;
+}
+
+function login() {
+  return `
+    <div class="home-hero">
+      <h1>로그인</h1>
+    </div>
+    <form class="card" style="display:flex;flex-direction:column;gap:12px" onsubmit="doLogin(event)">
+      <input id="inp-email" type="email" placeholder="이메일" required
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+      <input id="inp-password" type="password" placeholder="비밀번호" required
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+      <p id="auth-error" style="color:var(--danger);font-size:var(--t4);margin:0"></p>
+      <button type="submit" class="btn-primary">로그인</button>
+    </form>
+    <button class="btn-primary" style="background:var(--navy-light)" onclick="go('signup')">회원가입</button>
+    <button class="btn-primary" style="background:transparent;color:var(--text-sub);border:1px solid var(--border)" onclick="go('home')">취소</button>`;
+}
+
+function signup() {
+  return `
+    <div class="home-hero">
+      <h1>회원가입</h1>
+    </div>
+    <form class="card" style="display:flex;flex-direction:column;gap:12px" onsubmit="doSignup(event)">
+      <input id="inp-email" type="email" placeholder="이메일" required
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+      <input id="inp-nickname" type="text" placeholder="닉네임" required
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+      <input id="inp-password" type="password" placeholder="비밀번호" required
+        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+      <p id="auth-error" style="color:var(--danger);font-size:var(--t4);margin:0"></p>
+      <button type="submit" class="btn-primary">가입하기</button>
+    </form>
+    <button class="btn-primary" style="background:transparent;color:var(--text-sub);border:1px solid var(--border)" onclick="go('login')">이미 계정이 있어요</button>`;
 }
 
 const PAIN_ICONS = { knee: '🦵', 'lower-back': '🦴', ankle: '🦶', shoulder: '💪', wrist: '🤝' };
