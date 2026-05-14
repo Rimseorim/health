@@ -181,7 +181,7 @@
       <div style="display:flex;align-items:center;gap:10px">
         <span id="pb-pct"></span>
         <button class="btn-back-circle" id="pb-back" onclick="goBack()">←</button>
-        <button class="btn-back-circle" onclick="go('home')" title="홈">⌂</button>
+        <button class="btn-back-circle" onclick="go(USER ? 'home' : 'landing')" title="홈">⌂</button>
       </div>
     </div>
     <div class="progress-track"><div class="progress-fill" id="pb-fill"></div></div>
@@ -266,7 +266,8 @@ async function doSignup(e) {
   } catch(err) { errEl.textContent = err.message; }
 }
 
-function logout() { clearUser(); render(); }
+function logout() { clearUser(); sessionStorage.removeItem('guest'); render(); }
+function guestMode() { sessionStorage.setItem('guest', '1'); go('pain_site'); }
 
 let MY_RECORDS = null;
 
@@ -436,7 +437,8 @@ function updateProgress(screen) {
 /* ── 렌더 ── */
 function render() {
   const publicScreens = ['landing', 'login', 'signup'];
-  if (!USER && !publicScreens.includes(S.screen)) {
+  const isGuest = sessionStorage.getItem('guest');
+  if (!USER && !isGuest && !publicScreens.includes(S.screen)) {
     S.screen = 'landing';
   }
   updateProgress(S.screen);
@@ -476,6 +478,7 @@ function landing() {
     </div>
 
     <button class="btn-primary" style="font-size:var(--t2);padding:16px" onclick="go('login')">시작하기</button>
+    <button class="btn-primary" style="background:transparent;color:var(--text-sub);border:1px solid var(--border)" onclick="guestMode()">로그인 없이 둘러보기</button>
     <p style="text-align:center;font-size:var(--t4);color:var(--text-sub);line-height:1.6;padding:0 8px">이 앱은 재활 보조 도구이며<br>전문가 진단을 대체하지 않습니다</p>`;
 }
 
