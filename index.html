@@ -181,6 +181,7 @@
       <div style="display:flex;align-items:center;gap:10px">
         <span id="pb-pct"></span>
         <button class="btn-back-circle" id="pb-back" onclick="goBack()">←</button>
+        <button class="btn-back-circle" onclick="go('home')" title="홈">⌂</button>
       </div>
     </div>
     <div class="progress-track"><div class="progress-fill" id="pb-fill"></div></div>
@@ -267,12 +268,101 @@ async function doSignup(e) {
 
 function logout() { clearUser(); render(); }
 
+let MY_RECORDS = null;
+
+async function resumeRecord(movementId, painSiteId, causeId, stageIndex) {
+  DATA = await fetch(`data/movements/${movementId}.json`).then(r => r.json());
+  S.movementId  = movementId;
+  S.painSiteId  = painSiteId;
+  S.causeId     = causeId;
+  S.stageIndex  = stageIndex;
+  go('route');
+}
+
+async function deleteRecord(id) {
+  if (!confirm('기록을 삭제할까요?')) return;
+  await apiPost('/records/delete', { token: USER.token, record_id: id });
+  goMyRecords();
+}
+
+async function goMyRecords() {
+  try {
+    const res = await fetch(`${API}/records/mine?token=${USER.token}`);
+    MY_RECORDS = await res.json();
+  } catch(e) { MY_RECORDS = []; }
+  go('my_records');
+}
+
+function my_records() {
+  const movementNames = { 'back-squat': '백스쿼트', 'front-squat': '프론트스쿼트', 'overhead-squat': '오버헤드스쿼트' };
+  const painNames = { knee: '무릎', 'lower-back': '허리', ankle: '발목', shoulder: '어깨', wrist: '손목' };
+  const causeLabels = {
+    'cause-a': 'Case A', 'cause-b': 'Case B', 'cause-c': 'Case C',
+    'cause-dp': 'DP (통증)', 'cause-case1': 'Case 1', 'cause-case2': 'Case 2',
+    'cause-case3': 'Case 3', 'cause-case4': 'Case 4',
+  };
+
+  if (!MY_RECORDS || MY_RECORDS.length === 0) {
+    return `
+      <div class="home-hero"><h1>내 기록</h1></div>
+      <div class="card" style="text-align:center;color:var(--text-sub);padding:40px 20px">
+        아직 저장된 기록이 없어요.<br>감별을 완료하면 여기에 기록됩니다.
+      </div>
+      <button class="btn-primary" style="background:var(--navy-light)" onclick="go('home')">홈으로</button>`;
+  }
+
+  const cards = MY_RECORDS.map(r => {
+    const updated = new Date(r.updated_at).toLocaleDateString('ko-KR');
+    return `
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;cursor:pointer" onclick="resumeRecord('${r.movement_id}','${r.pain_site_id}','${r.cause_id}',${r.stage_index})">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:var(--t3)">${movementNames[r.movement_id] || r.movement_id}</span>
+          <span style="font-size:var(--t4);color:var(--text-sub)">${updated}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="background:var(--choice-sel);color:var(--navy);border-radius:6px;padding:3px 8px;font-size:var(--t4)">${painNames[r.pain_site_id] || r.pain_site_id}</span>
+          <span style="background:var(--choice-sel);color:var(--navy);border-radius:6px;padding:3px 8px;font-size:var(--t4)">${causeLabels[r.cause_id] || r.cause_id}</span>
+          <span style="background:var(--choice-sel);color:var(--navy);border-radius:6px;padding:3px 8px;font-size:var(--t4)">Stage ${r.stage_index + 1}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+          <span style="font-size:var(--t4);color:var(--accent)">이어서 하기 →</span>
+          <button onclick="event.stopPropagation();deleteRecord(${r.id})" style="font-size:var(--t4);color:var(--danger);background:none;border:none;cursor:pointer;padding:4px 8px">삭제</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="home-hero"><h1>내 기록</h1></div>
+    ${cards}
+    <button class="btn-primary" style="background:var(--navy-light)" onclick="go('home')">홈으로</button>`;
+}
+
+async function saveRehabRecord() {
+  if (!USER) return;
+  try {
+    await apiPost('/records/save', {
+      token: USER.token,
+      movement_id: S.movementId,
+      pain_site_id: S.painSiteId,
+      cause_id: S.causeId || '',
+      stage_index: S.stageIndex || 0,
+    });
+  } catch(e) { console.warn('기록 저장 실패:', e.message); }
+}
+
 /* ── 데이터 ── */
 let DATA = null;
 let MANIFEST = null;
+let LAST_RECORD = null;
 
 async function init() {
   MANIFEST = await fetch('data/movements/manifest.json').then(r => r.json());
+  if (USER) {
+    try {
+      const records = await fetch(`${API}/records/mine?token=${USER.token}`).then(r => r.json());
+      LAST_RECORD = records.length ? records[records.length - 1] : null;
+    } catch(e) { LAST_RECORD = null; }
+  }
   const saved = loadProgress();
   if (saved && saved.movementId) {
     DATA = await fetch(`data/movements/${saved.movementId}.json`).then(r => r.json());
@@ -325,7 +415,7 @@ const LABEL = {
 
 function updateProgress(screen) {
   const bar = el('progress-bar');
-  if (screen === 'home') { bar.style.display = 'none'; return; }
+  if (['landing', 'home', 'login', 'signup', 'my_records'].includes(screen)) { bar.style.display = 'none'; return; }
   bar.style.display = 'block';
   let pct, label;
   if ((screen === 'route' || screen === 'complete') && S.causeId) {
@@ -345,58 +435,127 @@ function updateProgress(screen) {
 
 /* ── 렌더 ── */
 function render() {
+  const publicScreens = ['landing', 'login', 'signup'];
+  if (!USER && !publicScreens.includes(S.screen)) {
+    S.screen = 'landing';
+  }
   updateProgress(S.screen);
   window.scrollTo(0, 0);
-  const screens = { home, login, signup, pain_site, red_flag, pain_intensity, movement, question, test, cause, route, danger, complete };
-  el('main-screen').innerHTML = (screens[S.screen] || home)();
+  const screens = { landing, home, login, signup, my_records, pain_site, red_flag, pain_intensity, movement, question, test, cause, route, danger, complete };
+  el('main-screen').innerHTML = (screens[S.screen] || landing)();
 }
 
 /* ── 화면별 HTML 생성 ── */
 
-function home() {
-  const saved = loadProgress();
-  const hasProgress = saved && saved.screen && saved.screen !== 'home';
+function landing() {
   return `
-    <div class="home-hero">
-      <div class="badge">물리치료사 설계</div>
-      <h1>통증 원인부터<br>먼저 찾습니다</h1>
-      <p>같은 무릎 통증도 원인이 다르면<br>재활도 달라야 합니다.</p>
+    <div style="background:var(--navy);border-radius:20px;padding:32px 24px 28px;color:white;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:rgba(255,255,255,0.05);border-radius:50%"></div>
+      <div style="position:absolute;bottom:-50px;left:-20px;width:180px;height:180px;background:rgba(255,255,255,0.04);border-radius:50%"></div>
+      <h1 style="font-size:26px;font-weight:800;line-height:1.3;margin:0 0 10px">통증 원인부터<br>먼저 찾습니다</h1>
+      <p style="font-size:var(--t3);opacity:0.75;margin:0;line-height:1.6">같은 무릎 통증도 원인이 다르면<br>재활도 달라야 합니다.</p>
     </div>
-    <div class="card" style="display:flex;flex-direction:column;gap:10px">
-      <div class="info-row"><div class="dot"></div>5분 안에 원인 감별 완료</div>
-      <div class="info-row"><div class="dot"></div>박스에서 스마트폰으로</div>
-      <div class="info-row"><div class="dot"></div>스쿼트 3종 · 원인별 재활 루트</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;padding:20px">
+        <span style="font-weight:700;font-size:var(--t2)">운동하다 다쳤어요</span>
+        <span style="font-size:var(--t4);color:var(--text-sub);line-height:1.5">갑자기 통증이 생겼어요</span>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;padding:20px">
+        <span style="font-weight:700;font-size:var(--t2)">재활이 막막해요</span>
+        <span style="font-size:var(--t4);color:var(--text-sub);line-height:1.5">뭘 해야 할지 모르겠어요</span>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;padding:20px">
+        <span style="font-weight:700;font-size:var(--t2)">원인부터 찾아줘요</span>
+        <span style="font-size:var(--t4);color:var(--text-sub);line-height:1.5">동작과 부위로 원인을 짚어줘요</span>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;padding:20px">
+        <span style="font-weight:700;font-size:var(--t2)">재활 루틴 바로 나와요</span>
+        <span style="font-size:var(--t4);color:var(--text-sub);line-height:1.5">원인에 맞는 루틴이 바로 나와요</span>
+      </div>
     </div>
-    ${hasProgress ? `<button class="btn-primary" onclick="resumeProgress()">이어서 하기</button>` : ''}
-    <button class="btn-primary" style="${hasProgress ? 'background:var(--text-sub);' : ''}" onclick="go('pain_site')">처음부터 시작</button>
-    ${USER
-      ? `<p style="text-align:center;font-size:var(--t4);color:var(--text-sub)">${USER.nickname}님 · <a href="#" onclick="logout();return false;" style="color:var(--text-sub)">로그아웃</a></p>`
-      : `<button class="btn-primary" style="background:var(--navy-light)" onclick="go('login')">로그인 / 회원가입</button>`
-    }
+
+    <button class="btn-primary" style="font-size:var(--t2);padding:16px" onclick="go('login')">시작하기</button>
     <p style="text-align:center;font-size:var(--t4);color:var(--text-sub);line-height:1.6;padding:0 8px">이 앱은 재활 보조 도구이며<br>전문가 진단을 대체하지 않습니다</p>`;
+}
+
+function home() {
+  const movementNames = { 'back-squat': '백스쿼트', 'front-squat': '프론트스쿼트', 'overhead-squat': '오버헤드스쿼트' };
+  const painNames = { knee: '무릎', 'lower-back': '허리', ankle: '발목', shoulder: '어깨', wrist: '손목' };
+
+  const lastCard = LAST_RECORD ? (() => {
+    const date = new Date(LAST_RECORD.updated_at).toLocaleDateString('ko-KR');
+    return `
+      <div class="card" style="display:flex;flex-direction:column;gap:10px;cursor:pointer"
+           onclick="resumeRecord('${LAST_RECORD.movement_id}','${LAST_RECORD.pain_site_id}','${LAST_RECORD.cause_id}',${LAST_RECORD.stage_index})">
+        <p style="margin:0;font-size:var(--t4);color:var(--text-sub)">마지막 재활 기록</p>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <p style="margin:0;font-weight:700;font-size:var(--t3)">${movementNames[LAST_RECORD.movement_id] || LAST_RECORD.movement_id} · ${painNames[LAST_RECORD.pain_site_id] || LAST_RECORD.pain_site_id}</p>
+            <p style="margin:4px 0 0;font-size:var(--t4);color:var(--text-sub)">${date}</p>
+          </div>
+          <span style="font-size:var(--t3);color:var(--accent);font-weight:600">이어보기 →</span>
+        </div>
+      </div>`;
+  })() : `
+    <div class="card" style="text-align:center;padding:24px;color:var(--text-sub)">
+      <p style="margin:0;font-size:var(--t3)">아직 기록이 없어요</p>
+      <p style="margin:6px 0 0;font-size:var(--t4)">첫 재활을 시작해보세요</p>
+    </div>`;
+
+  return `
+    <div style="padding:8px 0 16px">
+      <p style="margin:0 0 2px;font-size:var(--t3);color:var(--text-sub)">안녕하세요</p>
+      <h1 style="font-size:32px;font-weight:800;color:var(--navy);margin:0">${USER.nickname}님</h1>
+    </div>
+
+    ${lastCard}
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px">
+      <button class="btn-primary" style="padding:16px;font-size:var(--t2)" onclick="go('pain_site')">지금 시작하기</button>
+      <button class="btn-primary" style="background:var(--navy-light);padding:14px" onclick="goMyRecords()">내 기록 보기</button>
+      <div style="text-align:center;padding:4px 0">
+        <a href="#" onclick="logout();return false;" style="font-size:var(--t4);color:var(--text-sub);text-decoration:none">로그아웃</a>
+      </div>
+      <p style="text-align:center;font-size:var(--t4);color:var(--border);line-height:1.6;margin:0">이 앱은 재활 보조 도구이며<br>전문가 진단을 대체하지 않습니다</p>
+    </div>`;
 }
 
 function login() {
   return `
-    <div class="home-hero">
-      <h1>로그인</h1>
+    <div style="display:flex;align-items:center;justify-content:center;height:calc(100vh - 280px)">
+      <div style="width:100%;max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="go('landing')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-sub);padding:0">←</button>
+          <h1 style="font-size:var(--t1);font-weight:700;color:var(--navy);margin:0">로그인</h1>
+        </div>
+        <form class="card" style="display:flex;flex-direction:column;gap:12px" onsubmit="doLogin(event)">
+          <input id="inp-email" type="email" placeholder="이메일" required
+            style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+          <input id="inp-password" type="password" placeholder="비밀번호" required
+            style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
+          <p id="auth-error" style="color:var(--danger);font-size:var(--t4);margin:0"></p>
+          <button type="submit" class="btn-primary">로그인</button>
+        </form>
+        <button class="btn-primary" style="background:var(--navy-light)" onclick="go('signup')">회원가입</button>
+      </div>
     </div>
-    <form class="card" style="display:flex;flex-direction:column;gap:12px" onsubmit="doLogin(event)">
-      <input id="inp-email" type="email" placeholder="이메일" required
-        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
-      <input id="inp-password" type="password" placeholder="비밀번호" required
-        style="padding:12px;border:1px solid var(--border);border-radius:8px;font-size:var(--t3);outline:none">
-      <p id="auth-error" style="color:var(--danger);font-size:var(--t4);margin:0"></p>
-      <button type="submit" class="btn-primary">로그인</button>
-    </form>
-    <button class="btn-primary" style="background:var(--navy-light)" onclick="go('signup')">회원가입</button>
-    <button class="btn-primary" style="background:transparent;color:var(--text-sub);border:1px solid var(--border)" onclick="go('home')">취소</button>`;
+    <div class="card" style="font-size:var(--t4);color:var(--text-sub);line-height:1.8">
+      <p style="margin:0 0 4px;font-weight:600;color:var(--navy)">테스트 계정</p>
+      <p style="margin:0">비밀번호: 1234</p>
+      <p style="margin:0">kim@rehab.com</p>
+      <p style="margin:0">lee@rehab.com</p>
+      <p style="margin:0">park@rehab.com</p>
+      <p style="margin:0">choi@rehab.com</p>
+      <p style="margin:0">jung@rehab.com</p>
+    </div>`;
 }
 
 function signup() {
   return `
-    <div class="home-hero">
-      <h1>회원가입</h1>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0">
+      <button onclick="go('login')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-sub);padding:0">←</button>
+      <h1 style="font-size:var(--t1);font-weight:700;color:var(--navy);margin:0">회원가입</h1>
     </div>
     <form class="card" style="display:flex;flex-direction:column;gap:12px" onsubmit="doSignup(event)">
       <input id="inp-email" type="email" placeholder="이메일" required
@@ -560,7 +719,7 @@ function cause() {
       ${c.priority_note ? `<p style="font-size:var(--t4);color:var(--accent);font-weight:600">${c.priority_note}</p>` : ''}
     </div>
     <p style="font-size:var(--t4);color:var(--text-sub);text-align:center;padding:0 4px">이 앱은 재활 보조 도구이며 전문가 진단을 대체하지 않습니다</p>
-    <button class="btn-primary" onclick="go('route')">재활 루트 보기</button>`;
+    <button class="btn-primary" onclick="saveRehabRecord();go('route')">재활 루트 보기</button>`;
 }
 
 function route() {
