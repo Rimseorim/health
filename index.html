@@ -207,7 +207,7 @@ let USER = JSON.parse(localStorage.getItem('rehab_user') || 'null');
 function saveUser(u) { USER = u; localStorage.setItem('rehab_user', JSON.stringify(u)); }
 function clearUser() { USER = null; localStorage.removeItem('rehab_user'); }
 
-const API = 'http://localhost:8000';
+const API = 'https://web-production-28002.up.railway.app';
 
 async function apiPost(path, body) {
   const res = await fetch(API + path, {

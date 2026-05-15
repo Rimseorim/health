@@ -10,8 +10,8 @@ from ..auth import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-NAVER_REDIRECT_URI = "http://localhost:8000/auth/naver/callback"
-FRONTEND_URL = "http://localhost:8080"
+NAVER_REDIRECT_URI = "https://web-production-28002.up.railway.app/auth/naver/callback"
+FRONTEND_URL = "https://rimseorim.github.io/health"
 
 class SignupRequest(BaseModel):
     email: EmailStr

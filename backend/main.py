@@ -12,7 +12,7 @@ app = FastAPI(title="CrossFit Rehab API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://rimseorim.github.io", "http://localhost:8080"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
